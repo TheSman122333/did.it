@@ -20,29 +20,41 @@
 # production
 /build
 
-# misc
-.DS_Store
-*.pem
+# typescript
+*.tsbuildinfo
+next-env.d.ts
 
-# debug
+# env files -- never commit real secrets
+.env*
+!.env.example
+
+# vercel
+.vercel
+
+# supabase CLI local state
+supabase/.temp
+supabase/.branches
+
+# editors
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# logs
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# misc
+*.pem
 
-# vercel
-.vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
-
-.env.local
-
-# claude
+# AI assistant local state -- never relevant to the repo itself
 .claude/
 **/.claude/
 CLAUDE.md
