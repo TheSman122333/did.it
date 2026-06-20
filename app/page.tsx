@@ -2,7 +2,6 @@ import { createClient } from "@/lib/supabase/server";
 import { getTodaysChallenge, getMyCompletionForToday } from "@/app/actions/challenge";
 import { getStreak } from "@/app/actions/completions";
 import CameraCapture from "@/components/CameraCapture";
-import AuthButton from "@/components/AuthButton";
 import AnonBootstrap from "@/components/AnonBootstrap";
 import { Check, Flame } from "lucide-react";
 
@@ -25,8 +24,7 @@ export default async function Home() {
 
   return (
     <main className="app-shell flex flex-col items-center justify-between">
-      <div className="flex w-full items-center justify-between">
-        <AuthButton isAnonymous={user.is_anonymous ?? false} />
+      <div className="flex w-full items-center justify-end">
         <div className="flex items-center gap-1.5 rounded-lg bg-sun-soft px-3 py-1.5 text-sm font-medium text-sun">
           <Flame size={16} strokeWidth={1.75} />
           <span>{streak}</span>

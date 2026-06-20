@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Sun, Users } from "lucide-react";
+import { Sun, User, Users } from "lucide-react";
 
 const tabs = [
   { href: "/", label: "Today", icon: Sun },
   { href: "/social", label: "Social", icon: Users },
+  { href: "/profile", label: "Profile", icon: User },
 ];
 
 export default function NavBar() {

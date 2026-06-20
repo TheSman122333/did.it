@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { User } from "lucide-react";
+import Avatar from "@/components/Avatar";
 import {
   searchProfilesByHandle,
   sendFriendRequest,
@@ -73,7 +73,12 @@ export default function SocialTab({ isAnonymous, friends, pendingRequests, feed 
           <ul className="mt-3 flex flex-col gap-2">
             {results.map((profile) => (
               <li key={profile.id} className="card flex items-center justify-between py-3">
-                <span className="font-medium text-ink">@{profile.handle}</span>
+                <div className="flex items-center gap-3">
+                  <Avatar url={profile.avatar_url} />
+                  <span className="font-medium text-ink">
+                    {profile.display_name || `@${profile.handle}`}
+                  </span>
+                </div>
                 {friendIds.has(profile.id) ? (
                   <span className="text-xs text-ink-muted">Friends</span>
                 ) : sentTo.has(profile.id) ? (
@@ -98,7 +103,12 @@ export default function SocialTab({ isAnonymous, friends, pendingRequests, feed 
           <ul className="mt-3 flex flex-col gap-2">
             {pendingRequests.map((req) => (
               <li key={req.id} className="card flex items-center justify-between py-3">
-                <span className="font-medium text-ink">@{req.requester.handle}</span>
+                <div className="flex items-center gap-3">
+                  <Avatar url={req.requester.avatar_url} />
+                  <span className="font-medium text-ink">
+                    {req.requester.display_name || `@${req.requester.handle}`}
+                  </span>
+                </div>
                 <div className="flex gap-2">
                   <button
                     onClick={() => handleRespond(req.id, true)}
@@ -133,15 +143,15 @@ export default function SocialTab({ isAnonymous, friends, pendingRequests, feed 
                   <img
                     src={item.photoUrl}
                     alt={`${item.friend.handle}'s proof`}
-                    className="h-14 w-14 rounded-xl object-cover"
+                    className="h-14 w-14 shrink-0 rounded-xl object-cover"
                   />
                 ) : (
-                  <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-sky-soft text-sky">
-                    <User size={22} strokeWidth={1.75} />
-                  </div>
+                  <Avatar url={item.friend.avatar_url} size={56} />
                 )}
                 <div>
-                  <p className="font-medium text-ink">@{item.friend.handle}</p>
+                  <p className="font-medium text-ink">
+                    {item.friend.display_name || `@${item.friend.handle}`}
+                  </p>
                   <p className="text-xs text-ink-muted">
                     {item.completedToday ? "Done for today" : "Hasn't done it yet"}
                   </p>
