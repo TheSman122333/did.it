@@ -11,10 +11,28 @@ export async function getMyProfile(userId: string): Promise<Profile> {
     .from("profiles")
     .select("id, handle, display_name, avatar_url")
     .eq("id", userId)
-    .single();
+    .maybeSingle();
 
   if (error) throw error;
-  return data;
+  if (data) return data;
+
+  // The auth user is valid (we got this far) but has no profiles row --
+  // normally impossible since signup creates one via trigger, but it can
+  // happen if someone deletes straight out of the profiles table instead
+  // of deleting the user. Recreate it rather than crashing forever. The
+  // user's own id is already globally unique, so a slice of it makes a
+  // safe handle with no collision-retry needed (unlike the trigger, which
+  // derives from email and does need one).
+  const fallbackHandle = userId.replace(/-/g, "").slice(0, 12);
+
+  const { data: created, error: insertError } = await supabase
+    .from("profiles")
+    .insert({ id: userId, handle: fallbackHandle })
+    .select("id, handle, display_name, avatar_url")
+    .single();
+
+  if (insertError) throw insertError;
+  return created;
 }
 
 export async function updateProfile(formData: FormData) {

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Comfortaa } from "next/font/google";
 import NavBar from "@/components/NavBar";
 import OnboardingModal from "@/components/OnboardingModal";
+import AnonBootstrap from "@/components/AnonBootstrap";
 import "./globals.css";
 
 const comfortaa = Comfortaa({
@@ -39,6 +40,7 @@ export default function RootLayout({
         {children}
         <NavBar />
         <OnboardingModal />
+        <AnonBootstrap />
       </body>
     </html>
   );

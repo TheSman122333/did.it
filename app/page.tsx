@@ -2,7 +2,6 @@ import { createClient } from "@/lib/supabase/server";
 import { getTodaysChallenge, getMyCompletionForToday } from "@/app/actions/challenge";
 import { getStreak } from "@/app/actions/completions";
 import CameraCapture from "@/components/CameraCapture";
-import AnonBootstrap from "@/components/AnonBootstrap";
 import { Check, Flame } from "lucide-react";
 
 export default async function Home() {
@@ -13,7 +12,11 @@ export default async function Home() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return <AnonBootstrap />;
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-paper">
+        <p className="text-ink-muted">Loading...</p>
+      </main>
+    );
   }
 
   const dailyChallenge = await getTodaysChallenge();

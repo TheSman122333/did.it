@@ -4,21 +4,23 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-// Renders only when there is no session at all (not even anonymous) --
-// e.g. first ever visit, or cookies cleared. Silently creates an anonymous
-// Supabase session so the app is usable without an explicit sign-up step,
-// then refreshes so the server component re-renders with a real user.
+// Mounted globally (see layout.tsx) so this runs no matter which route a
+// visitor lands on first, not just the Today page. getUser() actually
+// re-validates against Supabase (unlike getSession(), which would trust a
+// stale local token even if the underlying user row was deleted), so this
+// correctly recovers from "the account this browser was signed into no
+// longer exists" -- e.g. first ever visit, cookies cleared, or someone
+// deleted the test accounts from the Supabase dashboard.
 export default function AnonBootstrap() {
   const router = useRouter();
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.signInAnonymously().then(() => router.refresh());
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) return;
+      supabase.auth.signInAnonymously().then(() => router.refresh());
+    });
   }, [router]);
 
-  return (
-    <main className="flex min-h-screen items-center justify-center bg-paper">
-      <p className="text-ink-muted">Loading...</p>
-    </main>
-  );
+  return null;
 }
