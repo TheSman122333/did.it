@@ -14,6 +14,7 @@ export default function CameraCapture({
   const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [caption, setCaption] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,6 +40,7 @@ export default function CameraCapture({
       const formData = new FormData();
       formData.set("dailyChallengeId", dailyChallengeId);
       formData.set("photo", file);
+      formData.set("caption", caption);
       await submitCompletion(formData);
       router.refresh();
     } catch (err) {
@@ -69,6 +71,13 @@ export default function CameraCapture({
         src={previewUrl}
         alt="Your proof"
         className="aspect-square w-full rounded-2xl object-cover"
+      />
+      <input
+        value={caption}
+        onChange={(e) => setCaption(e.target.value)}
+        placeholder="Add a caption (optional)"
+        maxLength={280}
+        className="w-full rounded-xl border border-ink-muted/25 bg-white px-4 py-2.5 text-sm outline-none placeholder:text-ink-muted"
       />
       <div className="flex w-full gap-3">
         <button onClick={retake} disabled={submitting} className="btn-secondary flex-1 py-3">

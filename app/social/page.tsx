@@ -1,7 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { getTodaysChallenge } from "@/app/actions/challenge";
-import { getFriendsFeedForToday } from "@/app/actions/completions";
+import { getFriendsFeed, getFriendsTodayStatus } from "@/app/actions/completions";
 import { getMyFriends, getPendingRequests } from "@/app/actions/friends";
+import { getMyProfile } from "@/app/actions/profile";
 import SocialTab from "@/components/SocialTab";
 
 export default async function SocialPage() {
@@ -19,18 +20,25 @@ export default async function SocialPage() {
     );
   }
 
-  const dailyChallenge = await getTodaysChallenge();
-  const [friends, pendingRequests, feed] = await Promise.all([
+  const [dailyChallenge, friends, pendingRequests, profile] = await Promise.all([
+    getTodaysChallenge(),
     getMyFriends(user.id),
     getPendingRequests(user.id),
-    getFriendsFeedForToday(user.id, dailyChallenge.id),
+    getMyProfile(user.id),
+  ]);
+
+  const [friendStatuses, feed] = await Promise.all([
+    getFriendsTodayStatus(friends, dailyChallenge.id),
+    getFriendsFeed(user.id, friends),
   ]);
 
   return (
     <SocialTab
       isAnonymous={user.is_anonymous ?? false}
+      myHandle={profile.handle}
       friends={friends}
       pendingRequests={pendingRequests}
+      friendStatuses={friendStatuses}
       feed={feed}
     />
   );

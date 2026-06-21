@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { currentDareDate } from "@/lib/dareDate";
+import { currentChallengeDate } from "@/lib/challengeDate";
 
 type Challenge = {
   id: string;
@@ -21,7 +21,7 @@ export type DailyChallenge = {
 
 export async function getTodaysChallenge(): Promise<DailyChallenge> {
   const supabase = await createClient();
-  const date = currentDareDate();
+  const date = currentChallengeDate();
 
   const { data: existing, error: fetchError } = await supabase
     .from("daily_challenges")
@@ -60,7 +60,7 @@ export async function getTodaysChallenge(): Promise<DailyChallenge> {
     .select("*")
     .single();
 
-  // Another user racing to create today's row already won; just refetch.
+  // someone else already created today's row, just refetch it
   if (insertError?.code === "23505") {
     return getTodaysChallenge();
   }

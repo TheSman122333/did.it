@@ -1,106 +1,100 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-import { User } from "lucide-react";
-import { updateProfile } from "@/app/actions/profile";
-import AuthButton from "@/components/AuthButton";
+import { useState } from "react";
+import Link from "next/link";
+import { Flame, Trophy, Settings, UserRoundPlus } from "lucide-react";
+import Avatar from "@/components/Avatar";
+import FriendPillList from "@/components/FriendPillList";
+import FeedItemCard from "@/components/FeedItemCard";
+import AddFriendModal from "@/components/AddFriendModal";
+import StreakCalendar from "@/components/StreakCalendar";
+import type { MyProfile } from "@/app/actions/profile";
 import type { Profile } from "@/app/actions/friends";
+import type { FeedItem, StreakStats } from "@/app/actions/completions";
 
 export default function ProfileTab({
   profile,
-  isAnonymous,
+  streakStats,
+  friends,
+  posts,
 }: {
-  profile: Profile;
-  isAnonymous: boolean;
+  profile: MyProfile;
+  streakStats: StreakStats;
+  friends: Profile[];
+  posts: FeedItem[];
 }) {
-  const router = useRouter();
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [displayName, setDisplayName] = useState(profile.display_name ?? "");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const selected = e.target.files?.[0];
-    if (!selected) return;
-    setAvatarFile(selected);
-    setAvatarPreview(URL.createObjectURL(selected));
-  }
-
-  async function handleSave() {
-    setSaving(true);
-    setError(null);
-    try {
-      const formData = new FormData();
-      formData.set("displayName", displayName);
-      if (avatarFile) formData.set("avatar", avatarFile);
-      await updateProfile(formData);
-      router.refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  const avatarSrc = avatarPreview ?? profile.avatar_url;
+  const [addFriendOpen, setAddFriendOpen] = useState(false);
 
   return (
-    <main className="app-shell">
-      <h1 className="text-2xl font-bold text-ink">Profile</h1>
-
-      <div className="mt-6 flex flex-col items-center gap-3">
-        <label className="relative h-24 w-24 cursor-pointer rounded-full">
-          {avatarSrc ? (
-            <img
-              src={avatarSrc}
-              alt="Your avatar"
-              className="h-24 w-24 rounded-full object-cover"
-            />
-          ) : (
-            <div className="flex h-24 w-24 items-center justify-center rounded-full bg-sky-soft text-sky">
-              <User size={36} strokeWidth={1.75} />
-            </div>
-          )}
-          <span className="absolute inset-x-0 bottom-0 rounded-full bg-ink/60 py-1 text-center text-xs font-medium text-white">
-            Change
-          </span>
-          <input
-            ref={inputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleAvatarChange}
-            className="hidden"
-          />
-        </label>
-        <p className="text-sm text-ink-muted">@{profile.handle}</p>
+    <main className="app-shell relative">
+      <div className="absolute right-6 top-8 flex flex-col items-center gap-3">
+        <Link
+          href="/profile/settings"
+          aria-label="Settings"
+          className="flex h-14 w-14 items-center justify-center rounded-full border border-ink-muted/15 bg-white text-ink-muted"
+        >
+          <Settings size={30} strokeWidth={1.75} />
+        </Link>
+        <button
+          onClick={() => setAddFriendOpen(true)}
+          aria-label="Add a friend"
+          className="flex h-14 w-14 items-center justify-center rounded-full border border-ink-muted/15 bg-white text-ink-muted"
+        >
+          <UserRoundPlus size={30} strokeWidth={1.75} />
+        </button>
       </div>
 
-      <div className="mt-8 flex flex-col gap-2">
-        <label className="section-label" htmlFor="displayName">
-          Display name
-        </label>
-        <input
-          id="displayName"
-          value={displayName}
-          onChange={(e) => setDisplayName(e.target.value)}
-          placeholder="Add a display name"
-          maxLength={40}
-          className="rounded-xl border border-ink-muted/25 bg-white px-4 py-2.5 text-sm outline-none placeholder:text-ink-muted"
-        />
+      <div className="flex flex-col items-center gap-3">
+        <Avatar url={profile.avatar_url} size={88} />
+        <div className="text-center">
+          <h1 className="text-xl font-bold text-ink">
+            {profile.display_name || `@${profile.handle}`}
+          </h1>
+          <p className="text-sm text-ink-muted">@{profile.handle}</p>
+        </div>
       </div>
 
-      {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+      {profile.banned && (
+        <p className="mt-3 rounded-xl bg-red-50 px-4 py-3 text-center text-sm text-red-700">
+          Your account has been suspended for reported content.
+        </p>
+      )}
 
-      <button onClick={handleSave} disabled={saving} className="btn-primary mt-6 w-full">
-        {saving ? "Saving..." : "Save"}
-      </button>
-
-      <div className="mt-10 flex justify-center">
-        <AuthButton isAnonymous={isAnonymous} />
+      <div className="mt-6 flex justify-center gap-3">
+        <div className="flex items-center gap-1.5 rounded-lg bg-sun-soft px-3 py-1.5 text-sm font-medium text-sun">
+          <Flame size={16} strokeWidth={1.75} />
+          <span>{streakStats.current} day streak</span>
+        </div>
+        <div className="flex items-center gap-1.5 rounded-lg bg-sage-soft px-3 py-1.5 text-sm font-medium text-sage-dark">
+          <Trophy size={16} strokeWidth={1.75} />
+          <span>{streakStats.best} best</span>
+        </div>
       </div>
+
+      <div className="mt-6 flex justify-center">
+        <StreakCalendar completedDates={streakStats.completedDates} />
+      </div>
+
+      <div className="mt-8">
+        <h2 className="section-label">Friends</h2>
+        {friends.length === 0 ? (
+          <p className="mt-3 text-sm text-ink-muted">No friends yet.</p>
+        ) : (
+          <FriendPillList friends={friends} />
+        )}
+      </div>
+
+      <div className="mt-8 flex flex-col gap-3">
+        {posts.length === 0 ? (
+          <p className="text-center text-sm text-ink-muted">No posts yet.</p>
+        ) : (
+          posts.map((item) => <FeedItemCard key={item.completionId} item={item} isOwner />)
+        )}
+      </div>
+
+      {addFriendOpen && (
+        <AddFriendModal handle={profile.handle} onClose={() => setAddFriendOpen(false)} />
+      )}
     </main>
   );
 }

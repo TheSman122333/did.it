@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getTodaysChallenge, getMyCompletionForToday } from "@/app/actions/challenge";
 import { getStreak } from "@/app/actions/completions";
+import { getMyProfile } from "@/app/actions/profile";
 import CameraCapture from "@/components/CameraCapture";
 import { Check, Flame } from "lucide-react";
 
@@ -15,6 +16,17 @@ export default async function Home() {
     return (
       <main className="flex min-h-screen items-center justify-center bg-paper">
         <p className="text-ink-muted">Loading...</p>
+      </main>
+    );
+  }
+
+  const profile = await getMyProfile(user.id);
+  if (profile.banned) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-paper px-6 text-center">
+        <p className="text-sm text-ink-muted">
+          Your account has been suspended for reported content.
+        </p>
       </main>
     );
   }
@@ -35,7 +47,7 @@ export default async function Home() {
       </div>
 
       <div className="flex flex-1 flex-col items-center justify-center gap-8 text-center">
-        <span className="section-label">Today&rsquo;s Dare</span>
+        <span className="section-label">Today&rsquo;s Challenge</span>
         <h1 className="max-w-xs text-3xl font-bold text-ink">
           {dailyChallenge.challenge.prompt}
         </h1>

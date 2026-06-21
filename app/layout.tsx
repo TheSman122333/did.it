@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { Comfortaa } from "next/font/google";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import NavBar from "@/components/NavBar";
 import OnboardingModal from "@/components/OnboardingModal";
-import AnonBootstrap from "@/components/AnonBootstrap";
+import AuthBootstrap from "@/components/AuthBootstrap";
 import "./globals.css";
 
 const comfortaa = Comfortaa({
@@ -40,7 +41,8 @@ export default function RootLayout({
         {children}
         <NavBar />
         <OnboardingModal />
-        <AnonBootstrap />
+        <AuthBootstrap />
+        <SpeedInsights />
       </body>
     </html>
   );

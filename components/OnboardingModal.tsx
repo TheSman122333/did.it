@@ -1,47 +1,91 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Camera, Flame, Users } from "lucide-react";
+import { Camera, Flame, Users, Bell } from "lucide-react";
+import { isPushSupported, subscribeToPush } from "@/lib/pushClient";
 
 const STORAGE_KEY = "did-it:onboarded";
 
 const steps = [
   {
     icon: Camera,
-    title: "Get a daily dare",
+    title: "Get a daily challenge",
     body: "Every day there's one small challenge. Snap a photo to prove you did it.",
   },
   {
     icon: Flame,
     title: "Build a streak",
-    body: "Complete the dare each day to keep your streak going.",
+    body: "Complete the challenge each day to keep your streak going.",
   },
   {
     icon: Users,
     title: "Add friends",
-    body: "Search for friends by handle and see who's done today's dare.",
+    body: "Search for friends by handle and see who's done today's challenge.",
   },
 ];
 
 export default function OnboardingModal() {
-  const [open, setOpen] = useState(false);
+  const [stage, setStage] = useState<"closed" | "intro" | "notifications">("closed");
+  const [subscribing, setSubscribing] = useState(false);
 
   useEffect(() => {
-    // Reads browser-only localStorage to decide whether to show the modal,
-    // so this can't be known during SSR -- the one-time extra render here
-    // is the unavoidable cost of syncing from that external client storage.
     if (!window.localStorage.getItem(STORAGE_KEY)) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setOpen(true);
+      setStage("intro");
     }
   }, []);
 
-  function dismiss() {
+  function finish() {
     window.localStorage.setItem(STORAGE_KEY, "true");
-    setOpen(false);
+    setStage("closed");
   }
 
-  if (!open) return null;
+  function continueToNotifications() {
+    if (isPushSupported()) {
+      setStage("notifications");
+    } else {
+      finish();
+    }
+  }
+
+  async function enableNotifications() {
+    setSubscribing(true);
+    try {
+      await subscribeToPush();
+    } finally {
+      setSubscribing(false);
+      finish();
+    }
+  }
+
+  if (stage === "closed") return null;
+
+  if (stage === "notifications") {
+    return (
+      <div className="fixed inset-0 z-30 flex items-center justify-center bg-ink/40 px-6">
+        <div className="w-full max-w-sm rounded-2xl border border-ink-muted/15 bg-white p-6">
+          <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-sage-soft text-sage-dark">
+            <Bell size={22} strokeWidth={1.75} />
+          </span>
+          <h1 className="mt-4 text-lg font-semibold text-ink">Turn on notifications?</h1>
+          <p className="mt-2 text-sm text-ink-muted">
+            We&rsquo;ll only notify you for three things: a friend claps on your post, comments
+            on it, or completes today&rsquo;s challenge. Nothing else.
+          </p>
+          <button
+            onClick={enableNotifications}
+            disabled={subscribing}
+            className="btn-primary mt-6 w-full"
+          >
+            {subscribing ? "..." : "Enable notifications"}
+          </button>
+          <button onClick={finish} className="btn-ghost mt-2 w-full">
+            Not now
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-30 flex items-center justify-center bg-ink/40 px-6">
@@ -62,7 +106,7 @@ export default function OnboardingModal() {
           ))}
         </ul>
 
-        <button onClick={dismiss} className="btn-primary mt-6 w-full">
+        <button onClick={continueToNotifications} className="btn-primary mt-6 w-full">
           Got it
         </button>
       </div>

@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { assertNotBanned } from "@/lib/moderation";
 
 export type Profile = {
   id: string;
@@ -45,15 +46,32 @@ export async function searchProfilesByHandle(query: string): Promise<Profile[]> 
   return data ?? [];
 }
 
+export async function getProfileByHandle(
+  handle: string
+): Promise<(Profile & { banned: boolean; show_friends_list: boolean }) | null> {
+  const supabase = await createClient();
+  await currentUserId(supabase);
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, handle, display_name, avatar_url, banned, show_friends_list")
+    .eq("handle", handle)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
 export async function sendFriendRequest(addresseeId: string) {
   const supabase = await createClient();
   const userId = await currentUserId(supabase);
+  await assertNotBanned(supabase, userId);
 
   const { error } = await supabase
     .from("friendships")
     .insert({ requester_id: userId, addressee_id: addresseeId });
 
-  // Already requested (either direction) -- not a real failure.
+  // already requested, fine either way
   if (error && error.code !== "23505") throw error;
 
   revalidatePath("/social");
@@ -90,6 +108,46 @@ export async function getMyFriends(userId: string): Promise<Profile[]> {
     const addressee = row.addressee as unknown as Profile;
     return row.requester_id === userId ? addressee : requester;
   });
+}
+
+// gated by their show_friends_list setting, enforced in get_user_friends()
+export async function getVisibleFriendsList(targetId: string): Promise<Profile[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("get_user_friends", { target_id: targetId });
+  if (error) throw error;
+  return (data ?? []) as Profile[];
+}
+
+// always visible, no toggle -- only ever reveals your own overlap with them
+export async function getMutualFriends(targetId: string): Promise<Profile[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("get_mutual_friends", { target_id: targetId });
+  if (error) throw error;
+  return (data ?? []) as Profile[];
+}
+
+export async function getFriendshipStatus(
+  viewerId: string,
+  targetId: string
+): Promise<"none" | "pending" | "accepted"> {
+  const supabase = await createClient();
+
+  const { data } = await supabase
+    .from("friendships")
+    .select("status")
+    .or(
+      `and(requester_id.eq.${viewerId},addressee_id.eq.${targetId}),and(requester_id.eq.${targetId},addressee_id.eq.${viewerId})`
+    )
+    .maybeSingle();
+
+  if (!data) return "none";
+  return data.status === "accepted" ? "accepted" : "pending";
+}
+
+export async function isFriendWith(viewerId: string, targetId: string): Promise<boolean> {
+  if (viewerId === targetId) return true;
+  const friends = await getMyFriends(viewerId);
+  return friends.some((f) => f.id === targetId);
 }
 
 export async function getPendingRequests(userId: string): Promise<
