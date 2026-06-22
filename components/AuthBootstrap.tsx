@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { isAuthRetryableFetchError } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 export default function AuthBootstrap() {
   const router = useRouter();
   const ranRef = useRef(false);
+  const [recovering, setRecovering] = useState(false);
 
   useEffect(() => {
     // react double-fires this in dev and it was nuking real sessions randomly. found it, never again
@@ -22,7 +23,10 @@ export default function AuthBootstrap() {
       if (errorCode) {
         window.history.replaceState(null, "", window.location.pathname);
         if (errorCode === "identity_already_exists") {
-          // google account already linked elsewhere, just sign in instead of linking
+          // google account already belongs to someone else, fall back to a plain sign in.
+          // cover the page during the retry so the button underneath can't get double clicked
+          // eslint-disable-next-line react-hooks/set-state-in-effect
+          setRecovering(true);
           supabase.auth.signInWithOAuth({
             provider: "google",
             options: { redirectTo: `${window.location.origin}/auth/callback` },
@@ -41,6 +45,14 @@ export default function AuthBootstrap() {
       supabase.auth.signInAnonymously().then(() => router.refresh());
     });
   }, [router]);
+
+  if (recovering) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-paper">
+        <p className="text-ink-muted">Signing you in...</p>
+      </div>
+    );
+  }
 
   return null;
 }

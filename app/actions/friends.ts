@@ -138,10 +138,11 @@ export async function getFriendshipStatus(
     .or(
       `and(requester_id.eq.${viewerId},addressee_id.eq.${targetId}),and(requester_id.eq.${targetId},addressee_id.eq.${viewerId})`
     )
-    .maybeSingle();
+    .limit(1);
 
-  if (!data) return "none";
-  return data.status === "accepted" ? "accepted" : "pending";
+  const row = data?.[0];
+  if (!row) return "none";
+  return row.status === "accepted" ? "accepted" : "pending";
 }
 
 export async function isFriendWith(viewerId: string, targetId: string): Promise<boolean> {

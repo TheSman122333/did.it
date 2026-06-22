@@ -4,9 +4,15 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { sendFriendRequest } from "@/app/actions/friends";
 
-export default function AddFriendButton({ userId }: { userId: string }) {
+export default function AddFriendButton({
+  userId,
+  initialSent = false,
+}: {
+  userId: string;
+  initialSent?: boolean;
+}) {
   const router = useRouter();
-  const [sent, setSent] = useState(false);
+  const [sent, setSent] = useState(initialSent);
 
   async function handleAdd() {
     setSent(true);

@@ -1,13 +1,12 @@
 # did.it — TODO
 
 ## In progress
-- nothing actively in flight right now
-
-## Backlog / Next Up
 - [ ] Groups/teams — do challenges with a small crew instead of just 1:1 friends, probably gets people opening the app more
 - [ ] Let people edit their handle, right now it's locked in at signup
 - [ ] Manual moderation review/appeal (right now bans and photo removal are purely automatic by report count, no human in the loop)
 - [ ] Offline support (there's a service worker now, but only for push -- it doesn't cache anything, app still needs Supabase anyway so low priority)
+
+## Backlog / Next Up
 - [ ] Swap the `<img>` tags for `next/image` (CameraCapture, Avatar, FeedItemCard, ProfileTab) — build keeps warning about it
 - [ ] Clean out `public/`, still has the unused default next.svg/vercel.svg/file.svg/globe.svg/window.svg from create-next-app
 - [ ] Real favicon.ico, tab icon is still the default Next.js one even though the rest of the icons got redone

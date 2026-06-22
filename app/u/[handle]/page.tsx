@@ -1,6 +1,11 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getProfileByHandle, isFriendWith, getVisibleFriendsList, getMutualFriends } from "@/app/actions/friends";
+import {
+  getProfileByHandle,
+  getFriendshipStatus,
+  getVisibleFriendsList,
+  getMutualFriends,
+} from "@/app/actions/friends";
 import { getStreak, getUserCompletions } from "@/app/actions/completions";
 import Avatar from "@/components/Avatar";
 import FeedItemCard from "@/components/FeedItemCard";
@@ -42,7 +47,8 @@ export default async function FriendProfilePage({
     redirect("/profile");
   }
 
-  const isFriend = await isFriendWith(user.id, target.id);
+  const status = await getFriendshipStatus(user.id, target.id);
+  const isFriend = target.id === user.id || status === "accepted";
   const [streak, posts, friendsList, mutuals] =
     isFriend && !target.banned
       ? await Promise.all([
@@ -72,9 +78,11 @@ export default async function FriendProfilePage({
       ) : !isFriend ? (
         <div className="mt-8 flex flex-col items-center gap-3">
           <p className="text-sm text-ink-muted">
-            Add them as a friend to see their streak and posts.
+            {status === "pending"
+              ? "Friend request sent, waiting on them."
+              : "Add them as a friend to see their streak and posts."}
           </p>
-          <AddFriendButton userId={target.id} />
+          <AddFriendButton userId={target.id} initialSent={status === "pending"} />
         </div>
       ) : (
         <>

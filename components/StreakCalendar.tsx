@@ -1,3 +1,5 @@
+import { currentChallengeDate, previousChallengeDate } from "@/lib/challengeDate";
+
 const WEEKS = 12;
 
 function chunk<T>(items: T[], size: number): T[][] {
@@ -8,14 +10,12 @@ function chunk<T>(items: T[], size: number): T[][] {
 
 export default function StreakCalendar({ completedDates }: { completedDates: string[] }) {
   const completed = new Set(completedDates);
-  const today = new Date();
+  // walk challenge-date strings, not plain calendar dates, so a square lines up with the same day the streak uses
   const days: { date: string; done: boolean }[] = [];
-
-  for (let i = WEEKS * 7 - 1; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    const iso = d.toISOString().split("T")[0];
-    days.push({ date: iso, done: completed.has(iso) });
+  let cursor = currentChallengeDate();
+  for (let i = 0; i < WEEKS * 7; i++) {
+    days.unshift({ date: cursor, done: completed.has(cursor) });
+    cursor = previousChallengeDate(cursor);
   }
 
   const columns = chunk(days, 7);

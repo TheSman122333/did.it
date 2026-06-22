@@ -37,7 +37,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${comfortaa.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col font-sans">
+      {/* suppressHydrationWarning here because of extensions like ColorZilla that inject cz-shortcut-listen onto body before react hydrates -- not a real mismatch */}
+      <body className="min-h-full flex flex-col font-sans" suppressHydrationWarning>
         {children}
         <NavBar />
         <OnboardingModal />

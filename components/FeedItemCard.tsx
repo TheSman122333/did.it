@@ -39,9 +39,7 @@ export default function FeedItemCard({
   isOwner = false,
 }: {
   item: FeedItem;
-  /** Viewing your own post -- you can't clap/comment/report yourself, RLS
-   * already blocks all three, so disable the controls instead of letting
-   * the tap silently fail. */
+  // your own post -- can't clap/comment/report yourself, so disable those instead of letting the tap fail
   isOwner?: boolean;
 }) {
   const router = useRouter();
