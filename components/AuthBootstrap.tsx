@@ -23,8 +23,7 @@ export default function AuthBootstrap() {
       if (errorCode) {
         window.history.replaceState(null, "", window.location.pathname);
         if (errorCode === "identity_already_exists") {
-          // google account already belongs to someone else, fall back to a plain sign in.
-          // cover the page during the retry so the button underneath can't get double clicked
+          // google account already belongs to someone else, fall back to a plain sign in, covering the page so the button below can't get double clicked mid-retry
           // eslint-disable-next-line react-hooks/set-state-in-effect
           setRecovering(true);
           supabase.auth.signInWithOAuth({

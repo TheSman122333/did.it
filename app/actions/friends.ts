@@ -74,7 +74,7 @@ export async function sendFriendRequest(addresseeId: string) {
   // already requested, fine either way
   if (error && error.code !== "23505") throw error;
 
-  revalidatePath("/social");
+  // no revalidatePath -- /social is already dynamic, and this also runs from /add/[handle]'s render where that's not allowed (this was the crash)
 }
 
 export async function respondToFriendRequest(friendshipId: string, accept: boolean) {
