@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Flag, Hand, MessageCircle } from "lucide-react";
@@ -148,12 +149,20 @@ export default function FeedItemCard({
           <div className="flex aspect-square w-full items-center justify-center rounded-xl bg-paper text-sm text-ink-muted">
             This photo was removed
           </div>
+        ) : item.photoUrl ? (
+          <div className="relative aspect-square w-full overflow-hidden rounded-xl">
+            <Image
+              src={item.photoUrl}
+              alt={`${item.friend.handle}'s proof`}
+              fill
+              sizes="(max-width: 640px) 100vw, 480px"
+              className="object-cover"
+            />
+          </div>
         ) : (
-          <img
-            src={item.photoUrl ?? undefined}
-            alt={`${item.friend.handle}'s proof`}
-            className="aspect-square w-full rounded-xl object-cover"
-          />
+          <div className="flex aspect-square w-full items-center justify-center rounded-xl bg-paper text-sm text-ink-muted">
+            Photo unavailable
+          </div>
         )}
       </div>
 

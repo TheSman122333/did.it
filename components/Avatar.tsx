@@ -1,11 +1,14 @@
+import Image from "next/image";
 import { User } from "lucide-react";
 
 export default function Avatar({ url, size = 40 }: { url: string | null; size?: number }) {
   if (url) {
     return (
-      <img
+      <Image
         src={url}
         alt=""
+        width={size}
+        height={size}
         className="shrink-0 rounded-full object-cover"
         style={{ width: size, height: size }}
       />

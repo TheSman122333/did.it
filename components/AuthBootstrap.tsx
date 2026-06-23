@@ -29,6 +29,9 @@ export default function AuthBootstrap() {
           supabase.auth.signInWithOAuth({
             provider: "google",
             options: { redirectTo: `${window.location.origin}/auth/callback` },
+          }).then(({ error: retryError }) => {
+            // if this didn't even manage to redirect, don't leave them stuck on the overlay forever with no way out but a confused reload
+            if (retryError) setRecovering(false);
           });
         } else {
           alert(params.get("error_description") ?? "Sign-in failed");
