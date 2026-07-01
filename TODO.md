@@ -7,7 +7,6 @@
 - [ ] Offline support (there's a service worker now, but only for push -- it doesn't cache anything, app still needs Supabase anyway so low priority)
 
 ## Backlog / Next Up
-- [ ] Swap the `<img>` tags for `next/image` (CameraCapture, Avatar, FeedItemCard, ProfileTab) — build keeps warning about it
 - [ ] Clean out `public/`, still has the unused default next.svg/vercel.svg/file.svg/globe.svg/window.svg from create-next-app
 - [ ] Real favicon.ico, tab icon is still the default Next.js one even though the rest of the icons got redone
 
@@ -39,3 +38,6 @@
 - [x] Unread dot on a post clears once you open its comments, instead of only ever clearing on next page load
 - [x] Hover the clap count to see who clapped
 - [x] Friend profiles: show their friends list (toggle to hide it, in your own Profile tab) and mutual friends (always visible, no toggle)
+- [x] Swapped all `<img>` tags for `next/image` — proper optimization, signed URLs now flow through the CDN
+- [x] Route-level error boundaries (error.tsx, global-error.tsx, loading.tsx) — no more raw Next.js error pages on uncaught throws
+- [x] Fixed OAuth sign-in getting stuck on the "Signing you in..." overlay if the Google redirect failed silently

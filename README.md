@@ -12,7 +12,15 @@ No account required. You get an anonymous session automatically — Google sign-
 
 **Streaks** — Counts consecutive completed days. Doesn't break just because today is still open, only resets once a full day is actually missed.
 
-**Social** — Search friends by handle, send and accept requests, and see a feed of who's completed today's challenge, with their photo once they have.
+**Social** — Search friends by handle, send and accept requests. Split view: a Friends pane shows everyone's status, a Feed pane shows photos, captions, claps, and comments. Unread dot clears when you actually open the thread, not just on next load.
+
+**Claps + Comments** — React to a friend's completion or leave a comment. Per-user toggles in Profile settings control who can interact with your posts.
+
+**Reporting** — Flag a photo for one of several reasons. Three people reporting the same photo for the *same reason* hides it; mismatched reasons are ignored. Ten reports spread across at least three different posts triggers a ban. Rate limited to one report per person every two hours.
+
+**Friend profiles** — `/u/[handle]` shows a friend's streak, posts, and friends list. Their friends list has an opt-out toggle in your own settings.
+
+**Push notifications** — Get notified when a friend completes the challenge, claps your photo, or leaves a comment. Opt in per device; toggle off anytime from Profile.
 
 **Profile** — Set a display name and upload an avatar. Shown across the Social tab and friends feed.
 
@@ -24,7 +32,7 @@ No account required. You get an anonymous session automatically — Google sign-
 
 | | |
 |---|---|
-| Framework | Next.js 16 (App Router, Turbopack) |
+| Framework | Next.js 16 (App Router, Turbopack, React Compiler) |
 | Language | TypeScript |
 | Styling | Tailwind CSS v4 |
 | Backend | Supabase (Postgres + Storage + Auth) |
@@ -47,6 +55,14 @@ Create `.env.local` in the project root (see `.env.example`):
 ```
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+```
+
+For push notifications you'll also need VAPID keys:
+
+```
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=...
+VAPID_PRIVATE_KEY=...
+VAPID_SUBJECT=mailto:you@example.com
 ```
 
 ### 3. Supabase schema
