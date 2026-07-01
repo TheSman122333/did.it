@@ -40,7 +40,6 @@ export default function FeedItemCard({
   isOwner = false,
 }: {
   item: FeedItem;
-  // your own post -- can't clap/comment/report yourself, so disable those instead of letting the tap fail
   isOwner?: boolean;
 }) {
   const router = useRouter();

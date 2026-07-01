@@ -70,7 +70,7 @@ async function buildFeedItems(
 
   const photoPaths = rows.filter((r) => !r.removed).map((r) => r.photo_path);
 
-  // batched signed urls instead of one request per photo. this was the slow one
+  // batched signed urls, one request for all photos at once
   const [{ data: myClaps }, { data: signedUrls }] = await Promise.all([
     supabase
       .from("claps")

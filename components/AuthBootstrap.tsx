@@ -11,7 +11,7 @@ export default function AuthBootstrap() {
   const [recovering, setRecovering] = useState(false);
 
   useEffect(() => {
-    // react double-fires this in dev and it was nuking real sessions randomly. found it, never again
+    // react strict mode double-invokes effects in dev, guard against that
     if (ranRef.current) return;
     ranRef.current = true;
 
@@ -23,14 +23,14 @@ export default function AuthBootstrap() {
       if (errorCode) {
         window.history.replaceState(null, "", window.location.pathname);
         if (errorCode === "identity_already_exists") {
-          // google account already belongs to someone else, fall back to a plain sign in, covering the page so the button below can't get double clicked mid-retry
+          // identity is linked to another account, retry as a plain sign-in
           // eslint-disable-next-line react-hooks/set-state-in-effect
           setRecovering(true);
           supabase.auth.signInWithOAuth({
             provider: "google",
             options: { redirectTo: `${window.location.origin}/auth/callback` },
           }).then(({ error: retryError }) => {
-            // if this didn't even manage to redirect, don't leave them stuck on the overlay forever with no way out but a confused reload
+            // failed retry: clear the overlay instead of leaving it stuck indefinitely
             if (retryError) setRecovering(false);
           });
         } else {
@@ -42,7 +42,7 @@ export default function AuthBootstrap() {
 
     supabase.auth.getUser().then(({ data: { user }, error }) => {
       if (user) return;
-      // a network hiccup is not the same as "this account is gone", don't punish people for bad wifi
+      // transient network errors shouldn't trigger anonymous re-auth
       if (error && isAuthRetryableFetchError(error)) return;
       supabase.auth.signInAnonymously().then(() => router.refresh());
     });

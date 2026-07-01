@@ -54,7 +54,7 @@ yarn-error.log*
 # misc
 *.pem
 
-# AI assistant local state -- never relevant to the repo itself
+# AI stuffs
 .claude/
 **/.claude/
 CLAUDE.md
