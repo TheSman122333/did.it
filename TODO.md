@@ -41,3 +41,4 @@
 - [x] Swapped all `<img>` tags for `next/image` — proper optimization, signed URLs now flow through the CDN
 - [x] Route-level error boundaries (error.tsx, global-error.tsx, loading.tsx) — no more raw Next.js error pages on uncaught throws
 - [x] Fixed OAuth sign-in getting stuck on the "Signing you in..." overlay if the Google redirect failed silently
+- [x] DID-IT BINGO!!! Weekly shared 5x5 card on Today, row/column/diagonal wins, win count on your profile

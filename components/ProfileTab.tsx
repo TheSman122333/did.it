@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Flame, Trophy, Settings, UserRoundPlus } from "lucide-react";
+import { Flame, Trophy, Settings, UserRoundPlus, Grid3x3 } from "lucide-react";
 import Avatar from "@/components/Avatar";
 import FriendPillList from "@/components/FriendPillList";
 import FeedItemCard from "@/components/FeedItemCard";
@@ -68,6 +68,10 @@ export default function ProfileTab({
         <div className="flex items-center gap-1.5 rounded-lg bg-sage-soft px-3 py-1.5 text-sm font-medium text-sage-dark">
           <Trophy size={16} strokeWidth={1.75} />
           <span>{streakStats.best} best</span>
+        </div>
+        <div className="flex items-center gap-1.5 rounded-lg bg-sky-soft px-3 py-1.5 text-sm font-medium text-sky">
+          <Grid3x3 size={16} strokeWidth={1.75} />
+          <span>{profile.bingo_cards_completed} bingo</span>
         </div>
       </div>
 

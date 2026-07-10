@@ -10,10 +10,11 @@ export type MyProfile = Profile & {
   allow_claps: boolean;
   allow_comments: boolean;
   show_friends_list: boolean;
+  bingo_cards_completed: number;
 };
 
 const MY_PROFILE_COLUMNS =
-  "id, handle, display_name, avatar_url, banned, allow_claps, allow_comments, show_friends_list";
+  "id, handle, display_name, avatar_url, banned, allow_claps, allow_comments, show_friends_list, bingo_cards_completed";
 
 export async function getMyProfile(userId: string): Promise<MyProfile> {
   const supabase = await createClient();
