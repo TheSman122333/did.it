@@ -151,6 +151,38 @@ export async function isFriendWith(viewerId: string, targetId: string): Promise<
   return friends.some((f) => f.id === targetId);
 }
 
+export type DiscoverPerson = Profile & {
+  prompt: string;
+  completedAt: string;
+};
+
+// recent activity from strangers, shown when the viewer has no friends.
+// name + prompt + when only -- photos stay friend-gated
+export async function getDiscoverFeed(): Promise<DiscoverPerson[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase.rpc("get_discover_feed", { max_rows: 12 });
+  if (error) throw error;
+
+  type Row = {
+    user_id: string;
+    handle: string;
+    display_name: string | null;
+    avatar_url: string | null;
+    prompt: string;
+    completed_at: string;
+  };
+
+  return ((data ?? []) as Row[]).map((row) => ({
+    id: row.user_id,
+    handle: row.handle,
+    display_name: row.display_name,
+    avatar_url: row.avatar_url,
+    prompt: row.prompt,
+    completedAt: row.completed_at,
+  }));
+}
+
 export async function getPendingRequests(userId: string): Promise<
   (Friendship & { requester: Profile })[]
 > {

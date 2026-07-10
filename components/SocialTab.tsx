@@ -13,6 +13,7 @@ import {
   respondToFriendRequest,
   type Profile,
   type Friendship,
+  type DiscoverPerson,
 } from "@/app/actions/friends";
 import { markFeedSeen, type FeedItem, type FriendStatus } from "@/app/actions/completions";
 
@@ -23,7 +24,19 @@ type Props = {
   pendingRequests: (Friendship & { requester: Profile })[];
   friendStatuses: FriendStatus[];
   feed: FeedItem[];
+  discover: DiscoverPerson[];
 };
+
+function formatRelativeTime(iso: string) {
+  const ms = Date.now() - new Date(iso).getTime();
+  const minutes = Math.floor(ms / 60_000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
 
 export default function SocialTab({
   isAnonymous,
@@ -32,6 +45,7 @@ export default function SocialTab({
   pendingRequests,
   friendStatuses,
   feed,
+  discover,
 }: Props) {
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -191,7 +205,40 @@ export default function SocialTab({
 
         <section className="flex min-h-0 flex-1 flex-col overflow-y-auto border-t border-ink-muted/15 pt-6 md:basis-1/2 md:border-t-0 md:pt-0">
           <h2 className="section-label">Feed</h2>
-          {feed.length === 0 ? (
+          {friends.length === 0 && discover.length > 0 ? (
+            <div className="mt-3 flex flex-col gap-3">
+              <p className="text-sm text-ink-muted">
+                People have been out doing challenges. Add someone to see their photos here.
+              </p>
+              <ul className="flex flex-col gap-2">
+                {discover.map((person) => (
+                  <li key={person.id} className="card flex items-center justify-between gap-3 py-3">
+                    <Link href={`/u/${person.handle}`} className="flex min-w-0 items-center gap-3">
+                      <Avatar url={person.avatar_url} />
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-ink">
+                          {person.display_name || `@${person.handle}`}
+                        </p>
+                        <p className="truncate text-xs text-ink-muted">
+                          did &ldquo;{person.prompt}&rdquo; · {formatRelativeTime(person.completedAt)}
+                        </p>
+                      </div>
+                    </Link>
+                    {sentTo.has(person.id) ? (
+                      <span className="shrink-0 text-xs text-ink-muted">Requested</span>
+                    ) : (
+                      <button
+                        onClick={() => handleAdd(person.id)}
+                        className="btn-primary shrink-0 px-3 py-1 text-xs"
+                      >
+                        Add
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : feed.length === 0 ? (
             <p className="mt-3 text-sm text-ink-muted">No one&rsquo;s completed a challenge yet.</p>
           ) : (
             <div className="mt-3 flex flex-col gap-3">

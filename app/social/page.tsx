@@ -1,7 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
 import { getTodaysChallenge } from "@/app/actions/challenge";
 import { getFriendsFeed, getFriendsTodayStatus } from "@/app/actions/completions";
-import { getMyFriends, getPendingRequests } from "@/app/actions/friends";
+import {
+  getMyFriends,
+  getPendingRequests,
+  getDiscoverFeed,
+  type DiscoverPerson,
+} from "@/app/actions/friends";
 import { getMyProfile } from "@/app/actions/profile";
 import SocialTab from "@/components/SocialTab";
 
@@ -32,6 +37,16 @@ export default async function SocialPage() {
     getFriendsFeed(user.id, friends),
   ]);
 
+  // only fetched for friendless accounts, and never allowed to sink the page
+  let discover: DiscoverPerson[] = [];
+  if (friends.length === 0) {
+    try {
+      discover = await getDiscoverFeed();
+    } catch {
+      discover = [];
+    }
+  }
+
   return (
     <SocialTab
       isAnonymous={user.is_anonymous ?? false}
@@ -40,6 +55,7 @@ export default async function SocialPage() {
       pendingRequests={pendingRequests}
       friendStatuses={friendStatuses}
       feed={feed}
+      discover={discover}
     />
   );
 }

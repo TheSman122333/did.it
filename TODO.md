@@ -44,3 +44,4 @@
 - [x] Fixed OAuth sign-in getting stuck on the "Signing you in..." overlay if the Google redirect failed silently
 - [x] DID-IT BINGO!!! Weekly shared 5x5 card on Today, row/column/diagonal wins, win count on your profile
 - [x] Bingo squares need photo proof now, same capture flow as the daily challenge -- no more tap-to-claim
+- [x] Empty feed now suggests people to add: recent challenge activity from strangers (name + prompt only, photos stay friend-gated) with an Add button on each
