@@ -1,6 +1,7 @@
 # did.it — TODO
 
 ## In progress
+- [ ] Figure out a way to verify bingo square photos (any photo claims the square right now, nothing checks it actually matches the prompt)
 - [ ] Groups/teams — do challenges with a small crew instead of just 1:1 friends, probably gets people opening the app more
 - [ ] Let people edit their handle, right now it's locked in at signup
 - [ ] Manual moderation review/appeal (right now bans and photo removal are purely automatic by report count, no human in the loop)

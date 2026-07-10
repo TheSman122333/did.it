@@ -12,6 +12,8 @@ No account required. You get an anonymous session automatically. Google sign-in 
 
 **Streaks:** Counts consecutive completed days. Doesn't break just because today is still open, only resets once a full day is actually missed.
 
+**Bingo:** A shared 5x5 card each week, drawn from the challenge pool, fresh every Monday. Claim a square with a photo, same capture flow as the daily challenge. A full row, column, or diagonal wins, and your total wins show on your profile.
+
 **Social:** Search friends by handle, send and accept requests. Split view: a Friends pane shows everyone's status, a Feed pane shows photos, captions, claps, and comments. Unread dot clears when you actually open the thread, not just on next load.
 
 **Claps + Comments:** React to a friend's completion or leave a comment. Per-user toggles in Profile settings control who can interact with your posts.
