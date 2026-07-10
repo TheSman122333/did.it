@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { currentChallengeDate } from "@/lib/challengeDate";
+import { assertNotBanned } from "@/lib/moderation";
 
 export type BingoSquare = {
   position: number;
@@ -68,10 +69,6 @@ function checkBingoWin(marked: Set<number>): boolean {
   return diag === 5 || antiDiag === 5;
 }
 
-function parseMarked(value: string | null | undefined): Set<number> {
-  return new Set(value ? value.split(",").map(Number) : []);
-}
-
 export async function getThisWeeksBingoCard(): Promise<BingoCard> {
   const supabase = await createClient();
   const weekStart = currentWeekStartDate();
@@ -134,72 +131,115 @@ export async function getMyBingoProgress(
 ): Promise<BingoProgress> {
   const supabase = await createClient();
 
-  const { data, error } = await supabase
-    .from("user_bingo_progress")
-    .select("marked_positions, completed_at")
-    .eq("user_id", userId)
-    .eq("bingo_card_id", bingoCardId)
-    .maybeSingle();
+  const [{ data: squares, error: squaresError }, { data: progress, error: progressError }] =
+    await Promise.all([
+      supabase
+        .from("bingo_square_completions")
+        .select("position")
+        .eq("user_id", userId)
+        .eq("bingo_card_id", bingoCardId),
+      supabase
+        .from("user_bingo_progress")
+        .select("completed_at")
+        .eq("user_id", userId)
+        .eq("bingo_card_id", bingoCardId)
+        .maybeSingle(),
+    ]);
 
-  if (error) throw error;
+  if (squaresError) throw squaresError;
+  if (progressError) throw progressError;
 
   return {
-    markedPositions: [...parseMarked(data?.marked_positions)],
-    completed: Boolean(data?.completed_at),
+    markedPositions: (squares ?? []).map((s) => s.position),
+    completed: Boolean(progress?.completed_at),
   };
 }
 
-// returns whether the card currently has a bingo, so the client can show it
-export async function toggleBingoSquare(
-  bingoCardId: string,
-  position: number
-): Promise<boolean> {
+// photo-proof claim for one square, same upload-then-insert shape as
+// submitCompletion. returns whether the card now has a bingo.
+export async function submitBingoSquare(formData: FormData): Promise<{ won: boolean }> {
   const supabase = await createClient();
 
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Not logged in");
+  await assertNotBanned(supabase, user.id);
 
+  const bingoCardId = formData.get("bingoCardId");
+  const positionRaw = formData.get("position");
+  const photo = formData.get("photo");
+
+  if (typeof bingoCardId !== "string" || !bingoCardId) {
+    throw new Error("Missing bingo card id");
+  }
+  const position = Number(positionRaw);
   if (!Number.isInteger(position) || position < 0 || position > 24) {
     throw new Error("Invalid square");
   }
-
-  const { data: existing, error: readError } = await supabase
-    .from("user_bingo_progress")
-    .select("marked_positions, completed_at")
-    .eq("user_id", user.id)
-    .eq("bingo_card_id", bingoCardId)
-    .maybeSingle();
-
-  if (readError) throw readError;
-
-  const marked = parseMarked(existing?.marked_positions);
-  if (marked.has(position)) {
-    marked.delete(position);
-  } else {
-    marked.add(position);
+  if (!(photo instanceof File) || photo.size === 0) {
+    throw new Error("Missing photo");
   }
 
+  const photoPath = `${user.id}/bingo-${bingoCardId}-${position}.jpg`;
+
+  const { error: uploadError } = await supabase.storage
+    .from("completions")
+    .upload(photoPath, photo, {
+      contentType: photo.type || "image/jpeg",
+      upsert: true,
+    });
+
+  if (uploadError) throw uploadError;
+
+  const { error: insertError } = await supabase.from("bingo_square_completions").insert({
+    user_id: user.id,
+    bingo_card_id: bingoCardId,
+    position,
+    photo_path: photoPath,
+  });
+
+  // 23505 means this square was already claimed, which is fine
+  if (insertError && insertError.code !== "23505") {
+    await supabase.storage.from("completions").remove([photoPath]);
+    throw insertError;
+  }
+
+  const [{ data: squares, error: squaresError }, { data: progress }] = await Promise.all([
+    supabase
+      .from("bingo_square_completions")
+      .select("position")
+      .eq("user_id", user.id)
+      .eq("bingo_card_id", bingoCardId),
+    supabase
+      .from("user_bingo_progress")
+      .select("completed_at")
+      .eq("user_id", user.id)
+      .eq("bingo_card_id", bingoCardId)
+      .maybeSingle(),
+  ]);
+
+  if (squaresError) throw squaresError;
+
+  const marked = new Set((squares ?? []).map((s) => s.position));
   const won = checkBingoWin(marked);
-  // completed_at only ever gets set once, so unmarking and re-marking
-  // squares can't farm the profile counter
-  const firstWin = won && !existing?.completed_at;
-
-  const { error: upsertError } = await supabase.from("user_bingo_progress").upsert(
-    {
-      user_id: user.id,
-      bingo_card_id: bingoCardId,
-      marked_positions: [...marked].sort((a, b) => a - b).join(","),
-      completed_at: existing?.completed_at ?? (firstWin ? new Date().toISOString() : null),
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "user_id,bingo_card_id" }
-  );
-
-  if (upsertError) throw upsertError;
+  // completed_at only ever gets set once per card, so the profile counter
+  // can't be inflated by claiming more squares after the win
+  const firstWin = won && !progress?.completed_at;
 
   if (firstWin) {
+    const { error: progressError } = await supabase.from("user_bingo_progress").upsert(
+      {
+        user_id: user.id,
+        bingo_card_id: bingoCardId,
+        completed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id,bingo_card_id" }
+    );
+
+    if (progressError) throw progressError;
+
     const { data: profile } = await supabase
       .from("profiles")
       .select("bingo_cards_completed")
@@ -216,5 +256,5 @@ export async function toggleBingoSquare(
 
   revalidatePath("/");
   revalidatePath("/profile");
-  return won || Boolean(existing?.completed_at);
+  return { won };
 }

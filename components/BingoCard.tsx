@@ -1,9 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { PartyPopper } from "lucide-react";
-import { toggleBingoSquare, type BingoCard as BingoCardData } from "@/app/actions/bingo";
+import { Camera, PartyPopper, X } from "lucide-react";
+import {
+  submitBingoSquare,
+  type BingoCard as BingoCardData,
+  type BingoSquare,
+} from "@/app/actions/bingo";
 
 export default function BingoCard({
   card,
@@ -14,34 +17,14 @@ export default function BingoCard({
   initialMarked: number[];
   initialCompleted: boolean;
 }) {
-  const router = useRouter();
   const [marked, setMarked] = useState<Set<number>>(new Set(initialMarked));
   const [won, setWon] = useState(initialCompleted);
-  const [pending, setPending] = useState<number | null>(null);
+  const [activeSquare, setActiveSquare] = useState<BingoSquare | null>(null);
 
-  async function handleToggle(position: number) {
-    if (pending !== null) return;
-    setPending(position);
-
-    const next = new Set(marked);
-    if (next.has(position)) {
-      next.delete(position);
-    } else {
-      next.add(position);
-    }
-    setMarked(next);
-
-    try {
-      const hasBingo = await toggleBingoSquare(card.id, position);
-      if (hasBingo && !won) {
-        setWon(true);
-        router.refresh();
-      }
-    } catch {
-      setMarked(marked); // server rejected it, roll the square back
-    } finally {
-      setPending(null);
-    }
+  function handleClaimed(position: number, hasBingo: boolean) {
+    setMarked((prev) => new Set(prev).add(position));
+    if (hasBingo) setWon(true);
+    setActiveSquare(null);
   }
 
   return (
@@ -61,8 +44,8 @@ export default function BingoCard({
           return (
             <button
               key={square.position}
-              onClick={() => handleToggle(square.position)}
-              disabled={pending !== null}
+              onClick={() => !isMarked && setActiveSquare(square)}
+              disabled={isMarked}
               title={square.prompt}
               className={`aspect-square overflow-hidden rounded-lg border p-1 text-center transition ${
                 isMarked
@@ -78,8 +61,109 @@ export default function BingoCard({
         })}
       </div>
       <p className="text-xs text-ink-muted">
-        Row, column, or diagonal wins. Fresh card every Monday.
+        Snap a photo to claim a square. Row, column, or diagonal wins. Fresh card every Monday.
       </p>
+
+      {activeSquare && (
+        <BingoSquareModal
+          cardId={card.id}
+          square={activeSquare}
+          onClaimed={handleClaimed}
+          onClose={() => setActiveSquare(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function BingoSquareModal({
+  cardId,
+  square,
+  onClaimed,
+  onClose,
+}: {
+  cardId: string;
+  square: BingoSquare;
+  onClaimed: (position: number, hasBingo: boolean) => void;
+  onClose: () => void;
+}) {
+  const [file, setFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const selected = e.target.files?.[0];
+    if (!selected) return;
+    setFile(selected);
+    setPreviewUrl(URL.createObjectURL(selected));
+    setError(null);
+  }
+
+  function retake() {
+    setFile(null);
+    setPreviewUrl(null);
+  }
+
+  async function handleSubmit() {
+    if (!file) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.set("bingoCardId", cardId);
+      formData.set("position", String(square.position));
+      formData.set("photo", file);
+      const { won } = await submitBingoSquare(formData);
+      onClaimed(square.position, won);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-30 flex items-center justify-center bg-ink/40 px-6">
+      <div className="w-full max-w-sm rounded-3xl border border-ink-muted/15 bg-white p-6">
+        <div className="flex items-start justify-between gap-3">
+          <h1 className="text-lg font-semibold text-ink">{square.prompt}</h1>
+          <button onClick={onClose} aria-label="Close">
+            <X size={22} strokeWidth={1.75} className="text-ink-muted" />
+          </button>
+        </div>
+
+        <div className="mt-6 flex flex-col items-center gap-4">
+          {!previewUrl ? (
+            <label className="flex h-16 w-16 cursor-pointer items-center justify-center rounded-full bg-sage text-white active:scale-95">
+              <Camera size={26} strokeWidth={1.75} />
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handleFileChange}
+                className="hidden"
+              />
+            </label>
+          ) : (
+            <>
+              <img
+                src={previewUrl}
+                alt="Your proof"
+                className="aspect-square w-full rounded-2xl object-cover"
+              />
+              <div className="flex w-full gap-3">
+                <button onClick={retake} disabled={submitting} className="btn-secondary flex-1 py-3">
+                  Retake
+                </button>
+                <button onClick={handleSubmit} disabled={submitting} className="btn-primary flex-1 py-3">
+                  {submitting ? "Submitting..." : "Did it"}
+                </button>
+              </div>
+            </>
+          )}
+          {error && <p className="text-sm text-red-600">{error}</p>}
+        </div>
+      </div>
     </div>
   );
 }
