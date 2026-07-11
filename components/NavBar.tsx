@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Sun, User, Users } from "lucide-react";
+import { Sun, User, Users, UsersRound } from "lucide-react";
 
 const tabs = [
   { href: "/", label: "Today", icon: Sun },
   { href: "/social", label: "Social", icon: Users },
+  { href: "/groups", label: "Groups", icon: UsersRound },
   { href: "/profile", label: "Profile", icon: User },
 ];
 
@@ -17,7 +18,9 @@ export default function NavBar() {
     <nav className="fixed inset-x-0 bottom-0 z-20 flex justify-center border-t border-ink-muted/15 bg-white">
       <div className="flex w-full max-w-sm justify-around py-3">
         {tabs.map((tab) => {
-          const active = pathname === tab.href;
+          // prefix match so /groups/[id] still lights up the Groups tab
+          const active =
+            tab.href === "/" ? pathname === "/" : pathname.startsWith(tab.href);
           return (
             <Link
               key={tab.href}

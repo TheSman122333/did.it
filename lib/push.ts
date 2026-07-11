@@ -19,7 +19,29 @@ export type PushPayload = {
   url?: string;
 };
 
-type FriendSubscription = { user_id: string; endpoint: string; p256dh: string; auth: string };
+type Subscription = { user_id: string; endpoint: string; p256dh: string; auth: string };
+
+async function sendToSubscriptions(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  subs: Subscription[],
+  payload: PushPayload
+) {
+  await Promise.all(
+    subs.map(async (sub) => {
+      try {
+        await webpush.sendNotification(
+          { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+          JSON.stringify(payload)
+        );
+      } catch (err) {
+        // dead subscription (uninstalled, revoked, expired) -- drop it
+        if (err instanceof WebPushError && (err.statusCode === 404 || err.statusCode === 410)) {
+          await supabase.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
+        }
+      }
+    })
+  );
+}
 
 // only returns subs for friends of the caller, never needs the service-role key
 export async function notifyUsers(
@@ -36,19 +58,22 @@ export async function notifyUsers(
     target_ids: targetUserIds,
   });
 
-  await Promise.all(
-    ((subs ?? []) as FriendSubscription[]).map(async (sub) => {
-      try {
-        await webpush.sendNotification(
-          { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-          JSON.stringify(payload)
-        );
-      } catch (err) {
-        // dead subscription (uninstalled, revoked, expired) -- drop it
-        if (err instanceof WebPushError && (err.statusCode === 404 || err.statusCode === 410)) {
-          await supabase.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
-        }
-      }
-    })
-  );
+  await sendToSubscriptions(supabase, (subs ?? []) as Subscription[], payload);
+}
+
+// co-members of a group the caller belongs to, caller excluded by the RPC
+export async function notifyGroupMembers(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  groupId: string,
+  payload: PushPayload
+) {
+  if (!process.env.VAPID_PRIVATE_KEY) return;
+
+  ensureConfigured();
+
+  const { data: subs } = await supabase.rpc("get_group_push_subscriptions", {
+    grp: groupId,
+  });
+
+  await sendToSubscriptions(supabase, (subs ?? []) as Subscription[], payload);
 }

@@ -157,10 +157,10 @@ export async function deleteComment(commentId: string) {
   revalidatePath("/social");
 }
 
-export async function reportCompletion(completionId: string, reason?: string) {
-  const supabase = await createClient();
-  const userId = await currentUserId(supabase);
-
+async function assertUnderReportRateLimit(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string
+) {
   // RLS enforces this too, this just gives a real error message first
   const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
   const { data: recent } = await supabase
@@ -173,6 +173,13 @@ export async function reportCompletion(completionId: string, reason?: string) {
   if (recent && recent.length > 0) {
     throw new Error("You can only report once every 2 hours.");
   }
+}
+
+export async function reportCompletion(completionId: string, reason?: string) {
+  const supabase = await createClient();
+  const userId = await currentUserId(supabase);
+
+  await assertUnderReportRateLimit(supabase, userId);
 
   const { error } = await supabase.from("reports").insert({
     completion_id: completionId,
@@ -184,4 +191,20 @@ export async function reportCompletion(completionId: string, reason?: string) {
   if (error && error.code !== "23505") throw error;
 
   revalidatePath("/social");
+}
+
+export async function reportChallenge(challengeId: string, reason?: string) {
+  const supabase = await createClient();
+  const userId = await currentUserId(supabase);
+
+  await assertUnderReportRateLimit(supabase, userId);
+
+  const { error } = await supabase.from("reports").insert({
+    challenge_id: challengeId,
+    reporter_id: userId,
+    reason: reason?.trim() || null,
+  });
+
+  // already reported, fine
+  if (error && error.code !== "23505") throw error;
 }

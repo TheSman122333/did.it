@@ -6,7 +6,7 @@ import { after } from "next/server";
 import { getMyFriends, type Profile } from "@/app/actions/friends";
 import { currentChallengeDate, previousChallengeDate } from "@/lib/challengeDate";
 import { assertNotBanned } from "@/lib/moderation";
-import { notifyUsers } from "@/lib/push";
+import { notifyUsers, notifyGroupMembers } from "@/lib/push";
 
 export type FeedItem = {
   completionId: string;
@@ -34,32 +34,40 @@ type CompletionRow = {
   removed: boolean;
   caption: string | null;
   created_at: string;
-  daily_challenge: { challenge: { prompt: string } } | null;
+  daily_challenge: { group_id: string | null; challenge: { prompt: string } } | null;
   claps: { count: number }[] | null;
   comments: { id: string; created_at: string }[] | null;
 };
 
-// shared by the feed + friend profile, friend list passed in to avoid refetching it 2-3x
+// shared by the feed + friend profile + group feed, member list passed in
+// to avoid refetching it 2-3x. groupId scopes to one group's challenge
+// rows; null means main-challenge completions only, so group proofs never
+// leak into the regular feed
 async function buildFeedItems(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userIds: string[],
   friendById: Map<string, Profile>,
   viewerId: string,
-  limit: number
+  limit: number,
+  groupId: string | null = null
 ): Promise<FeedItem[]> {
   if (userIds.length === 0) return [];
+
+  let query = supabase
+    .from("completions")
+    .select(
+      "id, user_id, photo_path, removed, caption, created_at, daily_challenge:daily_challenges!inner(group_id, challenge:challenges(prompt)), claps(count), comments(id, created_at)"
+    )
+    .in("user_id", userIds);
+
+  query = groupId
+    ? query.eq("daily_challenge.group_id", groupId)
+    : query.is("daily_challenge.group_id", null);
 
   // independent, run together instead of two round trips back to back
   const [{ data: viewer }, { data: completions, error }] = await Promise.all([
     supabase.from("profiles").select("feed_last_seen_at").eq("id", viewerId).maybeSingle(),
-    supabase
-      .from("completions")
-      .select(
-        "id, user_id, photo_path, removed, caption, created_at, daily_challenge:daily_challenges(challenge:challenges(prompt)), claps(count), comments(id, created_at)"
-      )
-      .in("user_id", userIds)
-      .order("created_at", { ascending: false })
-      .limit(limit),
+    query.order("created_at", { ascending: false }).limit(limit),
   ]);
 
   if (error) throw error;
@@ -139,6 +147,20 @@ export async function getUserCompletions(
   const supabase = await createClient();
   const friendById = new Map([[targetUser.id, targetUser]]);
   return buildFeedItems(supabase, [targetUser.id], friendById, viewerId, limit);
+}
+
+// group feed: same cards, scoped to one group's own daily challenges
+export async function getGroupFeed(
+  viewerId: string,
+  groupId: string,
+  members: Profile[],
+  limit = 30
+): Promise<FeedItem[]> {
+  if (members.length === 0) return [];
+
+  const supabase = await createClient();
+  const memberById = new Map(members.map((m) => [m.id, m]));
+  return buildFeedItems(supabase, members.map((m) => m.id), memberById, viewerId, limit, groupId);
 }
 
 // friends tab is just status, no photo -- that's the feed's job
@@ -258,35 +280,58 @@ export async function submitCompletion(formData: FormData) {
     throw insertError;
   }
 
-  const friends = await getMyFriends(user.id);
-  if (friends.length > 0) {
-    const { data: actor } = await supabase
-      .from("profiles")
-      .select("handle, display_name")
-      .eq("id", user.id)
-      .maybeSingle();
-    const name = actor?.display_name || (actor ? `@${actor.handle}` : "A friend");
+  // group completions notify the group's members, not the friend list --
+  // co-members aren't necessarily friends and the copy differs
+  const { data: dailyRow } = await supabase
+    .from("daily_challenges")
+    .select("group_id")
+    .eq("id", dailyChallengeId)
+    .maybeSingle();
+  const groupId = dailyRow?.group_id ?? null;
 
+  const { data: actor } = await supabase
+    .from("profiles")
+    .select("handle, display_name")
+    .eq("id", user.id)
+    .maybeSingle();
+  const name = actor?.display_name || (actor ? `@${actor.handle}` : "A friend");
+
+  if (groupId) {
     after(() =>
-      notifyUsers(supabase, friends.map((f) => f.id), {
+      notifyGroupMembers(supabase, groupId, {
         title: "did.it",
-        body: `${name} completed today's challenge`,
-        url: "/social",
+        body: `${name} did the group challenge`,
+        url: `/groups/${groupId}`,
       })
     );
+  } else {
+    const friends = await getMyFriends(user.id);
+    if (friends.length > 0) {
+      after(() =>
+        notifyUsers(supabase, friends.map((f) => f.id), {
+          title: "did.it",
+          body: `${name} completed today's challenge`,
+          url: "/social",
+        })
+      );
+    }
   }
 
   revalidatePath("/");
+  if (groupId) revalidatePath(`/groups/${groupId}`);
   return data;
 }
 
 export async function getStreak(userId: string): Promise<number> {
   const supabase = await createClient();
 
+  // the group filter is load-bearing: group-challenge completions must
+  // never count toward the main daily streak
   const { data, error } = await supabase
     .from("completions")
-    .select("daily_challenge:daily_challenges(date)")
-    .eq("user_id", userId);
+    .select("daily_challenge:daily_challenges!inner(date, group_id)")
+    .eq("user_id", userId)
+    .is("daily_challenge.group_id", null);
 
   if (error) throw error;
 
@@ -324,10 +369,12 @@ export type StreakStats = {
 export async function getStreakStats(userId: string): Promise<StreakStats> {
   const supabase = await createClient();
 
+  // same load-bearing group filter as getStreak
   const { data, error } = await supabase
     .from("completions")
-    .select("daily_challenge:daily_challenges(date)")
-    .eq("user_id", userId);
+    .select("daily_challenge:daily_challenges!inner(date, group_id)")
+    .eq("user_id", userId)
+    .is("daily_challenge.group_id", null);
 
   if (error) throw error;
 

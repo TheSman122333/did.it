@@ -7,6 +7,9 @@ type Challenge = {
   id: string;
   prompt: string;
   active: boolean;
+  removed?: boolean;
+  created_by?: string | null;
+  group_id?: string | null;
   created_at: string;
 };
 
@@ -16,6 +19,7 @@ export type DailyChallenge = {
   date: string;
   reveal_at: string;
   created_at: string;
+  group_id?: string | null;
   challenge: Challenge;
 };
 
@@ -23,10 +27,12 @@ export async function getTodaysChallenge(): Promise<DailyChallenge> {
   const supabase = await createClient();
   const date = currentChallengeDate();
 
+  // group daily rows share dates with the main one, never match them here
   const { data: existing, error: fetchError } = await supabase
     .from("daily_challenges")
     .select("*")
     .eq("date", date)
+    .is("group_id", null)
     .maybeSingle();
 
   if (fetchError) throw fetchError;

@@ -14,6 +14,8 @@ No account required. You get an anonymous session automatically. Google sign-in 
 
 **Bingo:** A shared 5x5 card each week, drawn from the challenge pool, fresh every Monday. Claim a square with a photo, same capture flow as the daily challenge. A full row, column, or diagonal wins, and your total wins show on your profile.
 
+**Groups:** A crew with its own daily challenge, drawn from prompts the members write, plus its own feed with claps and comments. Group prompts are reportable just like photos. Public groups have a small twist: a challenge every member finishes with zero reports has a tiny chance of graduating into the main daily pool for everyone.
+
 **Social:** Search friends by handle, send and accept requests. Split view: a Friends pane shows everyone's status, a Feed pane shows photos, captions, claps, and comments. Unread dot clears when you actually open the thread, not just on next load. No friends yet? The feed suggests people who've been doing challenges, one tap to send a request (their photos stay private until you're actually friends).
 
 **Claps + Comments:** React to a friend's completion or leave a comment. Per-user toggles in Profile settings control who can interact with your posts.
