@@ -9,6 +9,7 @@ import {
 import { getGroupFeed, getMyCompletionForToday } from "@/app/actions/completions";
 import { getMyFriends } from "@/app/actions/friends";
 import GroupDetailTab from "@/components/GroupDetailTab";
+import GroupJoinView from "@/components/GroupJoinView";
 
 export default async function GroupDetailPage({
   params,
@@ -44,8 +45,15 @@ export default async function GroupDetailPage({
     );
   }
 
-  const [members, prompts, todaysChallenge, friends] = await Promise.all([
-    getGroupMembers(id),
+  // non-members of a public group get a join screen, not the content --
+  // prompts/feed/photos stay member-only regardless of visibility
+  const members = await getGroupMembers(id);
+  const isMember = members.some((m) => m.id === user.id);
+  if (!isMember) {
+    return <GroupJoinView group={group} members={members} />;
+  }
+
+  const [prompts, todaysChallenge, friends] = await Promise.all([
     getGroupPrompts(id),
     getTodaysGroupChallenge(id),
     getMyFriends(user.id),

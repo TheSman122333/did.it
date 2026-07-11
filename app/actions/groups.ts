@@ -26,6 +26,8 @@ export type GroupPrompt = {
   author: Pick<Profile, "handle" | "display_name"> | null;
 };
 
+const MAX_GROUPS = 5;
+
 async function currentUserId(supabase: Awaited<ReturnType<typeof createClient>>) {
   const {
     data: { user },
@@ -34,10 +36,26 @@ async function currentUserId(supabase: Awaited<ReturnType<typeof createClient>>)
   return user.id;
 }
 
+// RLS is the hard gate (0041), this just produces a readable message first
+async function assertUnderGroupCap(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string
+) {
+  const { count } = await supabase
+    .from("group_members")
+    .select("group_id", { count: "exact", head: true })
+    .eq("user_id", userId);
+
+  if ((count ?? 0) >= MAX_GROUPS) {
+    throw new Error(`You can only be in ${MAX_GROUPS} groups at once.`);
+  }
+}
+
 export async function createGroup(name: string, isPublic: boolean): Promise<string> {
   const supabase = await createClient();
   const userId = await currentUserId(supabase);
   await assertNotBanned(supabase, userId);
+  await assertUnderGroupCap(supabase, userId);
 
   const trimmed = name.trim();
   if (trimmed.length < 1 || trimmed.length > 40) {
@@ -66,25 +84,80 @@ export async function createGroup(name: string, isPublic: boolean): Promise<stri
   return group.id;
 }
 
-export async function getMyGroups(): Promise<GroupSummary[]> {
-  const supabase = await createClient();
+type GroupSummaryRow = Group & { group_members: { count: number }[] };
 
-  const { data, error } = await supabase
-    .from("groups")
-    .select("*, group_members(count)")
-    .order("created_at", { ascending: false });
-
-  if (error) throw error;
-
-  type Row = Group & { group_members: { count: number }[] };
-  return ((data ?? []) as Row[]).map((row) => ({
+function toGroupSummary(row: GroupSummaryRow): GroupSummary {
+  return {
     id: row.id,
     owner_id: row.owner_id,
     name: row.name,
     is_public: row.is_public,
     created_at: row.created_at,
     memberCount: row.group_members?.[0]?.count ?? 0,
-  }));
+  };
+}
+
+// via the membership table, not a bare groups select -- public groups are
+// visible to everyone now, so "my groups" has to mean "groups I'm in"
+export async function getMyGroups(): Promise<GroupSummary[]> {
+  const supabase = await createClient();
+  const userId = await currentUserId(supabase);
+
+  const { data, error } = await supabase
+    .from("group_members")
+    .select("group:groups(*, group_members(count))")
+    .eq("user_id", userId);
+
+  if (error) throw error;
+
+  return (data ?? [])
+    .map((row) => toGroupSummary(row.group as unknown as GroupSummaryRow))
+    .sort((a, b) => b.created_at.localeCompare(a.created_at));
+}
+
+// random public groups the caller isn't in, for the discover section
+export async function getDiscoverGroups(limit = 6): Promise<GroupSummary[]> {
+  const supabase = await createClient();
+  const userId = await currentUserId(supabase);
+
+  const [{ data: publicGroups, error }, { data: myMemberships }] = await Promise.all([
+    supabase
+      .from("groups")
+      .select("*, group_members(count)")
+      .eq("is_public", true)
+      .limit(30),
+    supabase.from("group_members").select("group_id").eq("user_id", userId),
+  ]);
+
+  if (error) throw error;
+
+  const myGroupIds = new Set((myMemberships ?? []).map((m) => m.group_id));
+  const candidates = ((publicGroups ?? []) as GroupSummaryRow[]).filter(
+    (g) => !myGroupIds.has(g.id)
+  );
+
+  for (let i = candidates.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+  }
+
+  return candidates.slice(0, limit).map(toGroupSummary);
+}
+
+export async function joinGroup(groupId: string) {
+  const supabase = await createClient();
+  const userId = await currentUserId(supabase);
+  await assertNotBanned(supabase, userId);
+  await assertUnderGroupCap(supabase, userId);
+
+  const { error } = await supabase
+    .from("group_members")
+    .insert({ group_id: groupId, user_id: userId });
+
+  // already in, fine
+  if (error && error.code !== "23505") throw error;
+  revalidatePath("/groups");
+  revalidatePath(`/groups/${groupId}`);
 }
 
 export async function getGroup(groupId: string): Promise<Group | null> {
@@ -120,8 +193,16 @@ export async function addGroupMember(groupId: string, userId: string) {
     .from("group_members")
     .insert({ group_id: groupId, user_id: userId });
 
-  // already in the group, fine
-  if (error && error.code !== "23505") throw error;
+  if (error) {
+    // already in the group, fine
+    if (error.code === "23505") return;
+    // RLS rejection: the cap on THEIR membership count is the one condition
+    // the owner can't pre-check, so surface it readably
+    if (error.code === "42501") {
+      throw new Error("Couldn't add them. They may already be in 5 groups.");
+    }
+    throw error;
+  }
   revalidatePath(`/groups/${groupId}`);
 }
 

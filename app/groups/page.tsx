@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { getMyGroups } from "@/app/actions/groups";
+import { getMyGroups, getDiscoverGroups } from "@/app/actions/groups";
 import GroupsTab from "@/components/GroupsTab";
 
 export default async function GroupsPage() {
@@ -17,7 +17,7 @@ export default async function GroupsPage() {
     );
   }
 
-  const groups = await getMyGroups();
+  const [groups, discover] = await Promise.all([getMyGroups(), getDiscoverGroups()]);
 
-  return <GroupsTab groups={groups} />;
+  return <GroupsTab groups={groups} discover={discover} />;
 }
