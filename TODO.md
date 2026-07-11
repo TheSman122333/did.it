@@ -45,3 +45,5 @@
 - [x] Bingo squares need photo proof now, same capture flow as the daily challenge -- no more tap-to-claim
 - [x] Empty feed now suggests people to add: recent challenge activity from strangers (name + prompt only, photos stay friend-gated) with an Add button on each
 - [x] GROUPS! A crew with its own daily challenge drawn from prompts the members write, its own feed with claps/comments, reportable challenge prompts (3x same reason = removed), and a public/private toggle. Public groups: a challenge everyone finishes with zero reports rolls a 5% chance of joining the main daily pool for everyone. Group completions never touch the main streak.
+- [x] Public groups are open now: Discover section on the Groups tab, anyone can join without knowing the owner. Content stays member-only, public just means the door's unlocked
+- [x] Capped everyone at 5 groups, enforced in RLS not just the UI

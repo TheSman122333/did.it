@@ -62,6 +62,7 @@ export default function GroupDetailTab({
 
   const [isPublic, setIsPublic] = useState(group.is_public);
   const [addingMember, setAddingMember] = useState(false);
+  const [addMemberError, setAddMemberError] = useState<string | null>(null);
   const [promptDraft, setPromptDraft] = useState("");
   const [promptError, setPromptError] = useState<string | null>(null);
   const [submittingPrompt, setSubmittingPrompt] = useState(false);
@@ -77,8 +78,13 @@ export default function GroupDetailTab({
   }
 
   async function handleAddMember(userId: string) {
-    await addGroupMember(group.id, userId);
-    router.refresh();
+    setAddMemberError(null);
+    try {
+      await addGroupMember(group.id, userId);
+      router.refresh();
+    } catch (err) {
+      setAddMemberError(err instanceof Error ? err.message : "Something went wrong");
+    }
   }
 
   async function handleRemoveMember(userId: string) {
@@ -188,6 +194,7 @@ export default function GroupDetailTab({
           {addingMember && addableFriends.length > 0 && (
             <div className="card mt-3 flex flex-col gap-2 p-4">
               <p className="text-xs text-ink-muted">Add from your friends</p>
+              {addMemberError && <p className="text-xs text-red-600">{addMemberError}</p>}
               {addableFriends.map((friend) => (
                 <div key={friend.id} className="flex items-center justify-between">
                   <span className="flex items-center gap-2 text-sm text-ink">
